@@ -185,3 +185,24 @@ div.tobolder:hover {
 	left: 0;
 	z-index: 99;
 }
+
+.historyrecordcell {
+	display: block;
+	height: 36px;
+	line-height: 36px;
+	padding: 0 12px;
+	cursor: pointer;
+	color: #333;
+	font-size: 13px;
+	font-style: italic;
+}
+	.historyrecordcell:hover {
+		background-color: rgba(0, 0, 255, 0.1);	
+	}
+.historyrecordcell span.recordcat {
+	font-weight: 600;
+	margin-left: 12px;
+}
+.historyrecordcell span.recordval {
+	margin-left: 36px;
+}

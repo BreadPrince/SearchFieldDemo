@@ -31,7 +31,7 @@ var searchField = (function() {
 
 	var domMap = {}
 
-	var setDOMMap, updateData, elementFactory, updateSelectOptions, updateDropDownCells, addChosenProperty, getChosenProperty, removeChosenProperty, slideDownSelectOptions, slideDownDropDownCells, slideUpDropDownCells, slideUpSelectOptions, searchInputFocused, searchFieldClicked, textWrapperClicked, dropDownClicked, searchSelectClicked, selectMaskClicked, dropDownMaskClicked, searchButtonClicked, searchInputKeyPress, searchInputKeyUp, searchInputKeyDown, initModule
+	var setDOMMap, updateData, elementFactory, updateSelectOptions, updateDropDownCells, addChosenProperty, getChosenProperty, removeChosenProperty, addTextWrap, addMutiTextWrap, deleteTextWrap, slideDownSelectOptions, slideDownDropDownCells, slideUpDropDownCells, slideUpSelectOptions, searchInputFocused, searchFieldClicked, textWrapperClicked, dropDownClicked, searchSelectClicked, selectMaskClicked, dropDownMaskClicked, searchButtonClicked, searchInputKeyPress, searchInputKeyUp, searchInputKeyDown, initModule
 
 	// 更新 DOM 地图
 	setDOMMap = function () {
@@ -120,6 +120,37 @@ var searchField = (function() {
 			})
 		}
 
+		// 显示历史记录
+		var textWrapperContentCount = Array.prototype.slice.call(domMap.textWrapper.children).length
+		
+		if (localStorage.record!=undefined && textWrapperContentCount<=1 && domMap.searchInput.value=='') {
+			var records = localStorage.record.split('|')
+			var showVals = []
+			records.forEach(function(el) {
+				var record = el.split('$')
+				var cat = record[0]
+
+				if (cat==key) {
+					showVals.push(record[1].split(';').join(', '))
+				}
+			})
+
+			if (showVals.length>0) {
+				showVals.forEach(function(val, index) {
+					// 显示最新的 3个记录
+					if (index<3) {
+						var div = elementFactory('div', 'historyrecordcell')
+						var catSpan = elementFactory('span', 'recordcat', key)
+						var valSpan = elementFactory('span', 'recordval', val)
+						div.appendChild(catSpan)
+						div.appendChild(valSpan)
+
+						dropDownWrapper.insertBefore(div, dropDownWrapper.firstChild)
+					}
+				})	
+			}
+		}
+
 		if (stateMap.data.length > 0) {
 			var noRepeat = []
 			Array.prototype.forEach.call(stateMap.data, function(el, index) {
@@ -138,11 +169,10 @@ var searchField = (function() {
 	}
 
 	// chosenData 添加属性
-	addChosenProperty = function( key, textWrap, target ) {
+	addChosenProperty = function( key, textWrap ) {
 		if (stateMap.chosenData[key]==undefined) {
 			stateMap.chosenData[key] = {
-				textWrap: textWrap,
-				target: target
+				textWrap: textWrap
 			}
 		}
 	}
@@ -163,8 +193,6 @@ var searchField = (function() {
 
 	// 添加 text wrap
 	addTextWrap = function( target ) {
-		var textWrapper = domMap.searchField.querySelector('.text-wrapper')
-
 		var content = target.textContent
 
 		var span = elementFactory('span', 'text-wrap', content)
@@ -172,9 +200,9 @@ var searchField = (function() {
 		span.appendChild(close)
 		span.style.opacity = '0'
 
-		addChosenProperty( content, span, target )
-		textWrapper.appendChild(span)
-		textWrapper.appendChild(domMap.searchInput)
+		addChosenProperty( content, span )
+		domMap.textWrapper.appendChild(span)
+		domMap.textWrapper.appendChild(domMap.searchInput)
 
 		// 显示动画
 		var opc = parseInt(span.style.opacity)
@@ -184,18 +212,43 @@ var searchField = (function() {
 			} else {
 				opc = 1
 				clearInterval(t)
+				domMap.searchInput.value = ''
+				domMap.searchInput.focus()
 			}
 			span.style.opacity = opc.toString()
 		}, 20)
+	}
+	// 历史记录批量添加 text wrap
+	addMutiTextWrap = function( target ) {
+		var contents = target.parentElement.querySelector('.recordval').textContent.split(', ')
+		contents.forEach(function(content) {
+			var span = elementFactory('span', 'text-wrap', content)
+			var close = elementFactory('span', 'text-wrap-close','x')
+			span.appendChild(close)
+			span.style.opacity = '0'
 
-		domMap.searchInput.value = ''
+			addChosenProperty( content, span )
+			domMap.textWrapper.appendChild(span)
+			domMap.textWrapper.appendChild(domMap.searchInput)
 
-		domMap.searchInput.focus()
+			// 显示动画
+			var opc = parseInt(span.style.opacity)
+			var t = setInterval(function() {
+				if (opc < 1) {
+					opc = opc + 0.1
+				} else {
+					opc = 1
+					clearInterval(t)
+					domMap.searchInput.value = ''
+					domMap.searchInput.focus()
+				}
+				span.style.opacity = opc.toString()
+			}, 20)
+		})
+
 	}
 	// 删除 text wrap
 	deleteTextWrap = function( target ) {
-		var textWrapper = domMap.searchField.querySelector('.text-wrapper')
-
 		var content = target.textContent.slice(0, -1)
 
 		removeChosenProperty( content )
@@ -207,12 +260,12 @@ var searchField = (function() {
 			} else {
 				opc = 0
 				clearInterval(t)
+
 				target.remove()
+				domMap.searchInput.focus()
 			}
 			target.style.opacity = opc.toString()
 		}, 10)
-
-		domMap.searchInput.focus()
 	}
 
 	// 下拉分类选项列表
@@ -419,6 +472,10 @@ var searchField = (function() {
 
 		if (event.target.parentElement.classList.contains('dropdowncell')) {
 			addTextWrap(event.target)
+		} else if (event.target.classList.contains('historyrecordcell')) {
+			addMutiTextWrap(event.target)
+		} else if (event.target.parentElement.classList.contains('historyrecordcell')) {
+			addMutiTextWrap(event.target)
 		}
 	}
 	textWrapperClicked = function ( event ) {
@@ -456,9 +513,17 @@ var searchField = (function() {
 
 			// 存储搜索记录
 			if (localStorage.record==undefined) {
-				localStorage.record = text.value
+				localStorage.record = text.catalog + '$' + text.value.join(';')
 			} else {
-				localStorage.record += '|' + text.value.join(';')
+				var item = text.catalog+'$'+text.value.join(';')
+				var itemRegex = text.catalog+'\\$'+text.value.join(';')
+				var historyRegex = new RegExp(itemRegex)
+				var record = localStorage.record
+				if (historyRegex.test(record)) {
+					record = record.replace(historyRegex, '')
+					localStorage.record = record
+				}
+				localStorage.record += '|' + item
 			}
 
 			window.location.href = './result.html' + '?' + 'cat=' + text.catalog + '&' + 'val=' + text.value.join('|')
@@ -514,7 +579,6 @@ var searchField = (function() {
 				var len = children.length
 				if (len>1) {
 					removeChosenProperty(children[len-2].textContent.slice(0, -1))
-					console.log(children[len-2])
 					children[len-2].remove()
 					slideDownDropDownCells(event.target.value)
 				}
