@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Result</title>
+	<style type="text/css">
+		table {
+			border-collapse: collapse;
+		}
+		th {
+			text-align: left;
+			padding-left: 6px;
+			padding-right: 18px;
+			padding-bottom: 8px;
+			border-bottom: 1px solid #ddd;
+		}
+		td {
+			padding-left: 6px;
+			padding-right: 18px;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div>
+			<p class="catalog">Catalog: <span></span></p>
+			<p class="keywords">KeyWords: <span></span></p>
+		</div>
+		<table>
+			<thead></thead>
+			<tbody></tbody>
+		</table>
+	</div>
+	<script type="text/javascript">
+		var search = document.location.search
+
+		var cat = /cat=(.*)&/.exec(search) ? /cat=(.*)&/.exec(search)[1] : /cat=(.*)/.exec(search)[1]
+		var val = /val=(.*)&/.exec(search) ? /val=(.*)&/.exec(search)[1] : /val=(.*)/.exec(search)[1]
+
+		document.querySelector('.catalog').querySelector('span').textContent = cat
+		document.querySelector('.keywords').querySelector('span').textContent = val.split('|').join(', ')
+
+		var data = {}
+
+		var table = document.querySelector('table')
+
+		var xmlhttp = new XMLHttpRequest()
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState==4) {
+				if (xmlhttp.status==200) {
+					data = JSON.parse(xmlhttp.response).data
+
+					var keys = []
+
+					if (data[0]!=null) {
+						keys = Object.keys(data[0])
+						var theadTr = document.createElement('tr')
+						keys.forEach(function(el) {
+							var th = document.createElement('th')
+							th.textContent = el
+							theadTr.appendChild(th)
+						})
+						table.querySelector('thead').appendChild(theadTr)
+					}
+
+					data.forEach(function(el) {
+						var catRegex = new RegExp(el[cat])
+						var tbodyTr = document.createElement('tr')
+						if (catRegex.test(val)) {
+							keys.forEach(function(value) {
+								var td = document.createElement('td')
+								td.textContent = el[value]
+								tbodyTr.appendChild(td)
+							})
+						}
+						table.querySelector('tbody').appendChild(tbodyTr)
+					})
+				}
+			}
+		}
+		xmlhttp.open('GET', './data.json', true)
+		xmlhttp.send()
+
+	</script>
+</body>
+</html>
